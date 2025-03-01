@@ -1,12 +1,8 @@
 import React from 'react';
+import ResourcesFile from '../components/resources/ResourcesFile';
 
 const Resources: React.FC = () => {
-  return (
-    <div className="resources-container">
-      <h1>Resources</h1>
-      <p>This is the resources page. Add your content here.</p>
-    </div>
-  );
+  return <ResourcesFile />;
 };
 
 export default Resources;
