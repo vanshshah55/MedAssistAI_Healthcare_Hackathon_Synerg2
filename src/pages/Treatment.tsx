@@ -172,9 +172,9 @@ const Treatment: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-800">AI Treatment Guidance</h1>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+        {/* <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
           New Treatment Plan
-        </button>
+        </button> */}
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -257,7 +257,7 @@ const Treatment: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="mt-4 flex space-x-3">
+                {/* <div className="mt-4 flex space-x-3">
                   <button className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center">
                     <Clipboard size={16} className="mr-1" />
                     Apply Plan
@@ -266,7 +266,7 @@ const Treatment: React.FC = () => {
                     <FileText size={16} className="mr-1" />
                     Edit Plan
                   </button>
-                </div>
+                </div> */}
               </div>
               
               {/* Medications */}
@@ -372,14 +372,14 @@ const Treatment: React.FC = () => {
               </div>
               
               {/* Actions */}
-              <div className="flex justify-end space-x-3">
+              {/* <div className="flex justify-end space-x-3">
                 <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
                   Request Second Opinion
                 </button>
                 <button className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
                   Approve & Document
                 </button>
-              </div>
+              </div> */}
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center justify-center h-64">

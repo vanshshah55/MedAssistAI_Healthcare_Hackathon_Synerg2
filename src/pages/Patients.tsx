@@ -1,96 +1,76 @@
-import React, { useState } from 'react';
-import { Search, Filter, ChevronDown, ChevronUp, Edit, Trash2, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, ChevronDown, ChevronUp, Edit, Trash2, Eye, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 interface Patient {
-  id: string;
+  id: number;
   name: string;
   age: number;
   gender: string;
   condition: string;
-  triageLevel: 'Immediate' | 'Urgent' | 'Delayed';
+  triageLevel: string;
   arrivalTime: string;
-  status: 'Waiting' | 'In Treatment' | 'Discharged';
+  status: string;
 }
 
+interface AddPatientFormData {
+  name: string;
+  age: number;
+  gender: string;
+  condition: string;
+  triageLevel: string;
+  status: string;
+}
+
+const initialFormData: AddPatientFormData = {
+  name: '',
+  age: 0,
+  gender: 'Male',
+  condition: '',
+  triageLevel: 'Delayed',
+  status: 'Waiting'
+};
+
 const Patients: React.FC = () => {
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<keyof Patient>('arrivalTime');
+  const [sortField, setSortField] = useState<keyof Patient>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterTriageLevel, setFilterTriageLevel] = useState<string>('all');
-  
-  // Mock patient data
-  const patientsData: Patient[] = [
-    {
-      id: '1',
-      name: 'John Doe',
-      age: 45,
-      gender: 'Male',
-      condition: 'Chest Pain',
-      triageLevel: 'Immediate',
-      arrivalTime: '08:30 AM',
-      status: 'In Treatment'
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      age: 32,
-      gender: 'Female',
-      condition: 'Broken Arm',
-      triageLevel: 'Urgent',
-      arrivalTime: '09:15 AM',
-      status: 'Waiting'
-    },
-    {
-      id: '3',
-      name: 'Robert Johnson',
-      age: 68,
-      gender: 'Male',
-      condition: 'Stroke Symptoms',
-      triageLevel: 'Immediate',
-      arrivalTime: '07:45 AM',
-      status: 'In Treatment'
-    },
-    {
-      id: '4',
-      name: 'Emily Davis',
-      age: 28,
-      gender: 'Female',
-      condition: 'Fever',
-      triageLevel: 'Delayed',
-      arrivalTime: '10:00 AM',
-      status: 'Waiting'
-    },
-    {
-      id: '5',
-      name: 'Michael Wilson',
-      age: 52,
-      gender: 'Male',
-      condition: 'Abdominal Pain',
-      triageLevel: 'Urgent',
-      arrivalTime: '09:30 AM',
-      status: 'In Treatment'
-    },
-    {
-      id: '6',
-      name: 'Sarah Brown',
-      age: 41,
-      gender: 'Female',
-      condition: 'Allergic Reaction',
-      triageLevel: 'Urgent',
-      arrivalTime: '08:50 AM',
-      status: 'Discharged'
-    },
-    {
-      id: '7',
-      name: 'David Miller',
-      age: 75,
-      gender: 'Male',
-      condition: 'Fall Injury',
-      triageLevel: 'Delayed',
-      arrivalTime: '11:20 AM',
-      status: 'Waiting'
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [formData, setFormData] = useState<AddPatientFormData>(initialFormData);
+  const [addingPatient, setAddingPatient] = useState(false);
+
+  const fetchPatients = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*');
+
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      if (data) {
+        setPatients(data);
+      } else {
+        setPatients([]);
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to fetch patients');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
   
   const handleSort = (field: keyof Patient) => {
     if (field === sortField) {
@@ -101,16 +81,19 @@ const Patients: React.FC = () => {
     }
   };
   
-  const filteredPatients = patientsData
+  const filteredPatients = patients
     .filter(patient => 
       (filterTriageLevel === 'all' || patient.triageLevel === filterTriageLevel) &&
       (patient.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
        patient.condition.toLowerCase().includes(searchTerm.toLowerCase()))
     )
     .sort((a, b) => {
-      if (a[sortField] < b[sortField]) return sortDirection === 'asc' ? -1 : 1;
-      if (a[sortField] > b[sortField]) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
+      const aValue = a[sortField];
+      const bValue = b[sortField];
+      if (!aValue || !bValue) return 0;
+      return sortDirection === 'asc' 
+        ? aValue < bValue ? -1 : 1
+        : aValue > bValue ? -1 : 1;
     });
   
   const getTriageBadgeColor = (level: string) => {
@@ -131,17 +114,207 @@ const Patients: React.FC = () => {
     }
   };
 
+  const handleAddPatient = () => {
+    if (!formData.name || !formData.age || !formData.gender || !formData.condition) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    const newPatient = {
+      id: patients.length + 1,
+      ...formData,
+      arrivalTime: new Date().toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true
+      }),
+      triageLevel: formData.triageLevel || 'Delayed',
+      status: formData.status || 'Waiting'
+    };
+
+    const updatedPatients = [...patients, newPatient];
+    setPatients(updatedPatients);
+    
+    // Store in localStorage
+    localStorage.setItem('patients', JSON.stringify(updatedPatients));
+    
+    setIsAddModalOpen(false);
+    setFormData({
+      name: '',
+      age: 0,
+      gender: '',
+      condition: '',
+      triageLevel: 'Delayed',
+      status: 'Waiting'
+    });
+    setError('');
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'age' ? parseInt(value) || 0 : value
+    }));
+  };
+
+  const handleDeletePatient = (id: number) => {
+    if (window.confirm('Are you sure you want to delete this patient?')) {
+      setPatients(prevPatients => prevPatients.filter(patient => patient.id !== id));
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center items-center min-h-screen">Loading patients...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-red-600">
+          <p>Error: {error}</p>
+          <button 
+            onClick={fetchPatients}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-6 max-w-[1400px] mx-auto">
+      <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-gray-800">Patients</h1>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        >
           Add New Patient
         </button>
       </div>
       
-      {/* Search and Filters */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0 md:space-x-4">
+      {/* Add Patient Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Add New Patient</h2>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddPatient}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Age</label>
+                  <input
+                    type="number"
+                    name="age"
+                    required
+                    min="0"
+                    max="150"
+                    value={formData.age}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Gender</label>
+                  <select
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Condition</label>
+                  <input
+                    type="text"
+                    name="condition"
+                    required
+                    value={formData.condition}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Triage Level</label>
+                  <select
+                    name="triageLevel"
+                    value={formData.triageLevel}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  >
+                    <option value="Immediate">Immediate</option>
+                    <option value="Urgent">Urgent</option>
+                    <option value="Delayed">Delayed</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                  >
+                    <option value="Waiting">Waiting</option>
+                    <option value="In Treatment">In Treatment</option>
+                    <option value="Discharged">Discharged</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingPatient}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-400"
+                >
+                  {addingPatient ? 'Adding...' : 'Add Patient'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4 mb-6">
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search size={18} className="text-gray-400" />
@@ -155,12 +328,12 @@ const Patients: React.FC = () => {
           />
         </div>
         
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center">
           <div className="relative">
             <div className="flex items-center">
-              <Filter size={18} className="text-gray-400 mr-1" />
+              <Filter size={18} className="text-gray-400 mr-2" />
               <select
-                className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                className="block w-48 pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                 value={filterTriageLevel}
                 onChange={(e) => setFilterTriageLevel(e.target.value)}
               >
@@ -174,7 +347,6 @@ const Patients: React.FC = () => {
         </div>
       </div>
       
-      {/* Patients Table */}
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -198,17 +370,8 @@ const Patients: React.FC = () => {
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Condition
                 </th>
-                <th 
-                  scope="col" 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('triageLevel')}
-                >
-                  <div className="flex items-center">
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Triage Level
-                    {sortField === 'triageLevel' && (
-                      sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />
-                    )}
-                  </div>
                 </th>
                 <th 
                   scope="col" 
@@ -232,10 +395,21 @@ const Patients: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredPatients.map((patient) => (
-                <tr key={patient.id}>
+                <tr key={patient.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{patient.name}</div>
-                    <div className="text-sm text-gray-500">ID: {patient.id}</div>
+                    <div className="flex items-center space-x-3">
+                      <Link
+                        to={`/patient/${patient.id}`}
+                        className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                        title="View Patient Details"
+                      >
+                        <Eye size={16} />
+                      </Link>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{patient.name}</div>
+                        <div className="text-sm text-gray-500">ID: {patient.id}</div>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{patient.age} years</div>
@@ -245,27 +419,25 @@ const Patients: React.FC = () => {
                     <div className="text-sm text-gray-900">{patient.condition}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTriageBadgeColor(patient.triageLevel)}`}>
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getTriageBadgeColor(patient.triageLevel)}`}>
                       {patient.triageLevel}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {patient.arrivalTime}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{patient.arrivalTime}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(patient.status)}`}>
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(patient.status)}`}>
                       {patient.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900">
-                        <Eye size={18} />
-                      </button>
-                      <button className="text-indigo-600 hover:text-indigo-900">
-                        <Edit size={18} />
-                      </button>
-                      <button className="text-red-600 hover:text-red-900">
+                    <div className="flex justify-center">
+                      <button 
+                        onClick={() => handleDeletePatient(patient.id)}
+                        className="text-red-600 hover:text-red-900 transition-colors"
+                        title="Delete Patient"
+                      >
                         <Trash2 size={18} />
                       </button>
                     </div>
@@ -277,43 +449,13 @@ const Patients: React.FC = () => {
         </div>
       </div>
       
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <div className="flex-1 flex justify-between sm:hidden">
-          <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-            Previous
-          </button>
-          <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-            Next
-          </button>
+      {filteredPatients.length > 0 ? (
+        <div className="mt-4 text-sm text-gray-500 text-right">
+          Total patients: {filteredPatients.length}
         </div>
-        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm text-gray-700">
-              Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredPatients.length}</span> of{' '}
-              <span className="font-medium">{filteredPatients.length}</span> results
-            </p>
-          </div>
-          <div>
-            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-              <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                <span className="sr-only">Previous</span>
-                <ChevronDown className="h-5 w-5 rotate-90" />
-              </button>
-              <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                1
-              </button>
-              <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                2
-              </button>
-              <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                <span className="sr-only">Next</span>
-                <ChevronDown className="h-5 w-5 -rotate-90" />
-              </button>
-            </nav>
-          </div>
-        </div>
-      </div>
+      ) : (
+        <div className="mt-4 text-center text-gray-500">No patients found</div>
+      )}
     </div>
   );
 };

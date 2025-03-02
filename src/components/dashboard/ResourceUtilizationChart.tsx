@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -22,6 +22,11 @@ ChartJS.register(
 
 const ResourceUtilizationChart: React.FC = () => {
   const { getResourcesByType, getResourcesByStatus } = useAppStore();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
   
   const resourceTypes = ['bed', 'ventilator', 'monitor', 'ambulance', 'staff'];
   
@@ -67,6 +72,17 @@ const ResourceUtilizationChart: React.FC = () => {
       },
     ],
   };
+
+  if (!isClient) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm p-5 border border-gray-100 h-full">
+        <h3 className="font-semibold text-gray-800 mb-4">Resource Utilization</h3>
+        <div className="h-64 flex items-center justify-center">
+          <p>Loading chart...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="bg-white rounded-lg shadow-sm p-5 border border-gray-100 h-full">

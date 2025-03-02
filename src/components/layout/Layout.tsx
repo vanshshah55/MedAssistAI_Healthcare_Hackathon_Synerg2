@@ -10,15 +10,16 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar />
-      <Header />
+      <Sidebar/>
+      <div className="flex flex-col min-h-screen md:pl-64">
+        <Header />
+        <main className="flex-1 pt-16">
+          <div className="max-w-7xl mx-auto p-4 md:p-6">
+            {children}
+          </div>
+        </main>
+      </div>
       <NotificationsPanel />
-      
-      <main className="pt-16 md:pl-64">
-        <div className="max-w-7xl mx-auto p-4 md:p-6">
-          {children}
-        </div>
-      </main>
     </div>
   );
 };

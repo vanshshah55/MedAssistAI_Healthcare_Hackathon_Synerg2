@@ -25,7 +25,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
     { path: '/triage', icon: <Activity size={20} />, label: 'AI Triage' },
     { path: '/treatment', icon: <Stethoscope size={20} />, label: 'Treatment' },
     { path: '/resources', icon: <Boxes size={20} />, label: 'Resources' },
-    { path: '/settings', icon: <Settings size={20} />, label: 'Settings' },
+    // { path: '/settings', icon: <Settings size={20} />, label: 'Settings' },
   ];
 
   return (
@@ -36,7 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
     >
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-center h-16 border-b border-blue-700">
-          <h1 className="text-xl font-bold">MediResponse AI</h1>
+          <h1 className="text-xl font-bold">MedAssist AI</h1>
         </div>
         
         <div className="flex-1 overflow-y-auto py-4">

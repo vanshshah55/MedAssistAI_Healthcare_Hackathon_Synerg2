@@ -39,7 +39,7 @@ const Login: React.FC<LoginProps> = ({ setIsAuthenticated }) => {
             <Activity className="h-8 w-8 text-white" />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">MediResponse AI</h2>
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">MedAssist AI</h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           Emergency Medical Intervention System
         </p>
@@ -145,17 +145,17 @@ const Login: React.FC<LoginProps> = ({ setIsAuthenticated }) => {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo Credentials</span>
+                {/* <span className="px-2 bg-white text-gray-500">Demo Credentials</span> */}
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-1 gap-3">
+            {/* <div className="mt-6 grid grid-cols-1 gap-3">
               <div className="bg-gray-50 p-3 rounded-md text-sm">
                 <p><strong>Email:</strong> doctor@example.com</p>
                 <p><strong>Password:</strong> password123</p>
                 <p className="text-xs text-gray-500 mt-1">Use these credentials for demo purposes</p>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

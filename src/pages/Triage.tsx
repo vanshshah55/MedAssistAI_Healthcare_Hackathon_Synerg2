@@ -451,14 +451,14 @@ const Triage: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="mt-6 flex justify-end space-x-3">
+                  {/* <div className="mt-6 flex justify-end space-x-3">
                     <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
                       Override Assessment
                     </button>
                     <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
                       Confirm & Proceed
                     </button>
-                  </div>
+                  </div> */}
                 </div>
               )}
             </>

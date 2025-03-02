@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAppStore } from '../store';
 import TriageStatusCard from '../components/dashboard/TriageStatusCard';
 import ResourceUtilizationChart from '../components/dashboard/ResourceUtilizationChart';
 import PatientStatusChart from '../components/dashboard/PatientStatusChart';
 import RecentPatientsTable from '../components/dashboard/RecentPatientsTable';
-import { useAppStore } from '../store';
+import ResourceCard from '../components/dashboard/ResourceCard';
 import { formatTimeAgo } from '../utils/format';
 
 const Dashboard: React.FC = () => {
@@ -19,12 +20,16 @@ const Dashboard: React.FC = () => {
     const typeResources = resources.filter(r => r.type === type);
     const available = typeResources.filter(r => r.status === 'available').length;
     const total = typeResources.length;
-    return { available, total, percentage: Math.round((available / total) * 100) };
+    return { available, total };
   };
 
   const bedStats = getResourceStats('bed');
   const ventilatorStats = getResourceStats('ventilator');
   const staffStats = getResourceStats('staff');
+
+  // Add this near the top of your component to debug
+  console.log('All notifications:', notifications);
+  console.log('Critical alerts:', criticalAlerts);
 
   return (
     <div className="space-y-6">
@@ -58,76 +63,26 @@ const Dashboard: React.FC = () => {
         <ResourceUtilizationChart />
       </div>
 
-      {/* Resource Overview */}
+      {/* Resource Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-gray-700 font-medium">Beds</h3>
-          <div className="mt-2">
-            <div className="flex justify-between mb-1">
-              <span className="text-2xl font-bold">{bedStats.available}</span>
-              <span className="text-gray-500">/ {bedStats.total}</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full">
-              <div 
-                className="h-2 bg-primary-500 rounded-full" 
-                style={{ width: `${bedStats.percentage}%` }} 
-              />
-            </div>
-            <p className="text-sm text-gray-500 mt-1">Available</p>
-            <Link 
-              to="/resources" 
-              className="text-primary-600 hover:text-primary-800 text-sm mt-3 inline-block"
-            >
-              Manage resources →
-            </Link>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-gray-700 font-medium">Ventilators</h3>
-          <div className="mt-2">
-            <div className="flex justify-between mb-1">
-              <span className="text-2xl font-bold">{ventilatorStats.available}</span>
-              <span className="text-gray-500">/ {ventilatorStats.total}</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full">
-              <div 
-                className="h-2 bg-primary-500 rounded-full" 
-                style={{ width: `${ventilatorStats.percentage}%` }} 
-              />
-            </div>
-            <p className="text-sm text-gray-500 mt-1">Available</p>
-            <Link 
-              to="/resources" 
-              className="text-primary-600 hover:text-primary-800 text-sm mt-3 inline-block"
-            >
-              Manage resources →
-            </Link>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-gray-700 font-medium">Staffs</h3>
-          <div className="mt-2">
-            <div className="flex justify-between mb-1">
-              <span className="text-2xl font-bold">{staffStats.available}</span>
-              <span className="text-gray-500">/ {staffStats.total}</span>
-            </div>
-            <div className="h-2 bg-gray-200 rounded-full">
-              <div 
-                className="h-2 bg-primary-500 rounded-full" 
-                style={{ width: `${staffStats.percentage}%` }} 
-              />
-            </div>
-            <p className="text-sm text-gray-500 mt-1">Available</p>
-            <Link 
-              to="/resources" 
-              className="text-primary-600 hover:text-primary-800 text-sm mt-3 inline-block"
-            >
-              Manage resources →
-            </Link>
-          </div>
-        </div>
+        <ResourceCard
+          title="Beds"
+          available={bedStats.available}
+          total={bedStats.total}
+          type="beds"
+        />
+        <ResourceCard
+          title="Ventilators"
+          available={ventilatorStats.available}
+          total={ventilatorStats.total}
+          type="ventilators"
+        />
+        <ResourceCard
+          title="Staff"
+          available={staffStats.available}
+          total={staffStats.total}
+          type="staff"
+        />
       </div>
 
       {/* Triage Status Cards */}
@@ -139,10 +94,10 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Recent Patients */}
-      <RecentPatientsTable />
+      {/* <RecentPatientsTable /> */}
 
       {/* Critical Alerts */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
+      {/* <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
         <h3 className="font-semibold text-gray-800 mb-4">Critical Alerts</h3>
         <div className="space-y-4">
           {criticalAlerts.map(alert => (
@@ -160,7 +115,7 @@ const Dashboard: React.FC = () => {
             <p className="text-gray-500 text-center py-4">No critical alerts</p>
           )}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

@@ -1,117 +1,60 @@
 import React from 'react';
 import { useAppStore } from '../../store';
-import { X, AlertTriangle, AlertCircle, Info } from 'lucide-react';
+import { Bell, User } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { formatTimeAgo } from '../../utils/format';
-import { Notification } from '../../pages/types/index';
 
-const NotificationsPanel: React.FC = () => {
+const Header: React.FC = () => {
   const { 
-    notifications, 
     notificationsOpen, 
     setNotificationsOpen,
-    markNotificationAsRead
+    getUnreadNotificationsCount
   } = useAppStore();
 
-  const handleMarkAsRead = (id: string, e: React.MouseEvent) => {
+  const unreadCount = getUnreadNotificationsCount();
+
+  const handleNotificationClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
-    markNotificationAsRead(id);
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'alert':
-        return <AlertCircle className="h-5 w-5 text-danger-500" />;
-      case 'warning':
-        return <AlertTriangle className="h-5 w-5 text-warning-500" />;
-      case 'info':
-        return <Info className="h-5 w-5 text-primary-500" />;
-      default:
-        return <Info className="h-5 w-5 text-primary-500" />;
-    }
-  };
-
-  const getNotificationBgColor = (notification: Notification) => {
-    if (notification.read) return 'bg-white';
-    
-    switch (notification.type) {
-      case 'alert':
-        return 'bg-danger-50';
-      case 'warning':
-        return 'bg-warning-50';
-      case 'info':
-        return 'bg-primary-50';
-      default:
-        return 'bg-primary-50';
-    }
+    setNotificationsOpen(!notificationsOpen);
   };
 
   return (
-    <>
-      {/* Backdrop */}
-      {notificationsOpen && (
-        <div 
-          className="fixed inset-0 bg-black/20 z-40 md:hidden"
-          onClick={() => setNotificationsOpen(false)}
-        />
-      )}
-      
-      {/* Notifications Panel */}
-      <div className={cn(
-        "fixed top-0 right-0 z-50 h-screen w-80 bg-white border-l border-gray-200 transition-transform duration-300 transform",
-        notificationsOpen ? "translate-x-0" : "translate-x-full"
-      )}>
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-800">Notifications</h2>
-          <button 
-            className="p-1 rounded-full hover:bg-gray-100"
-            onClick={() => setNotificationsOpen(false)}
-          >
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
-        </div>
+    <header className="bg-white border-b border-gray-200 fixed top-0 right-0 left-0 z-30 md:left-64">
+      <div className="px-4 py-3 flex justify-between items-center">
+        <h1 className="text-xl font-semibold text-gray-800 hidden md:block">
+          Emergency Response System
+        </h1>
         
-        <div className="overflow-y-auto h-[calc(100vh-64px)]">
-          {notifications.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
-              No notifications
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <button
+              className="p-2 rounded-full hover:bg-gray-100 relative focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onClick={handleNotificationClick}
+              type="button"
+              aria-label="Toggle notifications"
+            >
+              <Bell className="h-5 w-5 text-gray-600" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-5 px-1 text-xs font-bold text-white bg-red-600 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
+          
+          <div className="flex items-center">
+            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+              <User className="h-4 w-4 text-blue-600" />
             </div>
-          ) : (
-            <ul className="divide-y divide-gray-200">
-              {notifications.map((notification) => (
-                <li 
-                  key={notification.id}
-                  className={cn(
-                    "p-4 hover:bg-gray-50 cursor-pointer transition-colors",
-                    getNotificationBgColor(notification)
-                  )}
-                  onClick={() => markNotificationAsRead(notification.id)}
-                >
-                  <div className="flex">
-                    <div className="flex-shrink-0 mr-3">
-                      {getNotificationIcon(notification.type)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-900">{notification.message}</p>
-                      <p className="text-xs text-gray-500 mt-1">{formatTimeAgo(notification.timestamp)}</p>
-                    </div>
-                    {!notification.read && (
-                      <button 
-                        className="ml-2 text-xs text-primary-600 hover:text-primary-800"
-                        onClick={(e) => handleMarkAsRead(notification.id, e)}
-                      >
-                        Mark as read
-                      </button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+            <div className="ml-2 hidden md:block">
+              <p className="text-sm font-medium text-gray-700">Dr. James Johnson</p>
+              <p className="text-xs text-gray-500">Emergency Medicine</p>
+            </div>
+          </div>
         </div>
       </div>
-    </>
+    </header>
   );
 };
 
-export default NotificationsPanel;
+export default Header;
