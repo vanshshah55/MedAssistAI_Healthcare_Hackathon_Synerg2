@@ -31,6 +31,8 @@ const ResourcesList: React.FC<ResourcesListProps> = ({ resources }) => {
   const [patientPriorityFilter, setPatientPriorityFilter] = useState<string>('all');
   const [selectedResourceDetails, setSelectedResourceDetails] = useState<Resource | null>(null);
   const [selectedPatientDetails, setSelectedPatientDetails] = useState<typeof mockPatients[0] | null>(null);
+  const [aiAllocationActive, setAiAllocationActive] = useState(false);
+  const [simulationSpeed, setSimulationSpeed] = useState(2000); // milliseconds between updates
   
   const displayResources = resources || allResources;
   
@@ -88,6 +90,7 @@ const ResourcesList: React.FC<ResourcesListProps> = ({ resources }) => {
 
   // Intelligent resource allocation algorithm
   const allocateResourcesAutomatically = useCallback(() => {
+    // Get available resources and unassigned patients
     const availableResources = displayResources.filter(r => r.status === 'available');
     const unassignedPatients = mockPatients
       .filter(p => !displayResources.some(r => r.assignedTo === p.id))
@@ -95,32 +98,116 @@ const ResourcesList: React.FC<ResourcesListProps> = ({ resources }) => {
         ...patient,
         priority: calculatePatientPriority(patient)
       }))
-      .sort((a, b) => b.priority - a.priority);
+      .sort((a, b) => b.priority - a.priority); // Sort by priority
 
-    // Resource-patient matching optimization
-    availableResources.forEach(resource => {
-      const suitablePatient = unassignedPatients.find(patient => {
-        // Match resource type with patient needs
-        switch (resource.type) {
+    // Resource allocation rules
+    const allocateResource = (resource: typeof availableResources[0], patient: typeof unassignedPatients[0]) => {
+      // Calculate optimal allocation based on multiple factors
+      const isOptimalMatch = () => {
+        switch (resource.type.toLowerCase()) {
           case 'ambulance':
-            return patient.chiefComplaint.includes('Trauma') || 
-                   patient.triageLevel === 'critical';
+            // Prioritize critical cases and trauma
+            return patient.chiefComplaint?.toLowerCase().includes('trauma') ||
+                   patient.triageLevel === 'critical' ||
+                   patient.vitalSigns?.oxygenSaturation < 90;
+          
+          case 'monitor':
+            // Prioritize cardiac and respiratory cases
+            return patient.chiefComplaint?.toLowerCase().includes('chest') ||
+                   patient.chiefComplaint?.toLowerCase().includes('heart') ||
+                   patient.vitalSigns?.heartRate > 120 ||
+                   patient.vitalSigns?.heartRate < 50;
+          
           case 'bed':
-            return true; // All patients can use beds
-          case 'ventilator':
-            return patient.chiefComplaint.includes('Respiratory') || 
-                   patient.vitalSigns.oxygenSaturation < 90;
+            // General allocation based on severity
+            return true;
+          
+          case 'staff':
+            // Staff allocation based on patient needs
+            return patient.triageLevel === 'critical' ||
+                   patient.vitalSigns?.heartRate > 120 ||
+                   patient.vitalSigns?.oxygenSaturation < 92;
+          
           default:
             return true;
         }
+      };
+
+      if (isOptimalMatch()) {
+        updateResourceStatus(resource.id, 'in-use', patient.id);
+        return true;
+      }
+      return false;
+    };
+
+    // First pass: Handle critical cases
+    const criticalPatients = unassignedPatients.filter(p => 
+      p.triageLevel === 'critical' || 
+      p.priority >= 70 ||
+      (p.vitalSigns && (
+        p.vitalSigns.heartRate > 120 ||
+        p.vitalSigns.oxygenSaturation < 90 ||
+        p.vitalSigns.temperature > 39
+      ))
+    );
+
+    criticalPatients.forEach(patient => {
+      // Find best matching resource for critical patient
+      const bestResource = availableResources.find(resource => {
+        // Prioritize specific resources for critical cases
+        if (patient.chiefComplaint?.toLowerCase().includes('trauma')) {
+          return resource.type === 'ambulance';
+        }
+        if (patient.vitalSigns?.heartRate > 120 || patient.vitalSigns?.heartRate < 50) {
+          return resource.type === 'monitor';
+        }
+        return true;
       });
 
-      if (suitablePatient) {
-        updateResourceStatus(resource.id, 'in-use', suitablePatient.id);
-        unassignedPatients.splice(unassignedPatients.indexOf(suitablePatient), 1);
+      if (bestResource) {
+        allocateResource(bestResource, patient);
+        availableResources.splice(availableResources.indexOf(bestResource), 1);
       }
     });
-  }, [displayResources, calculatePatientPriority, updateResourceStatus]);
+
+    // Second pass: Handle remaining patients
+    const remainingPatients = unassignedPatients.filter(p => 
+      !criticalPatients.includes(p)
+    );
+
+    remainingPatients.forEach(patient => {
+      // Find suitable resource based on patient needs
+      const suitableResource = availableResources.find(resource => {
+        // Match resource type with patient condition
+        if (patient.chiefComplaint?.toLowerCase().includes('chest')) {
+          return resource.type === 'monitor';
+        }
+        if (patient.triageLevel === 'urgent') {
+          return ['bed', 'monitor'].includes(resource.type);
+        }
+        return true;
+      });
+
+      if (suitableResource) {
+        allocateResource(suitableResource, patient);
+        availableResources.splice(availableResources.indexOf(suitableResource), 1);
+      }
+    });
+
+    // Update UI to show allocation results
+    const allocatedCount = criticalPatients.length + remainingPatients.length - unassignedPatients.length;
+    console.log(`AI Allocation complete: ${allocatedCount} resources allocated`);
+    
+    // Show allocation summary
+    const summary = {
+      totalAllocated: allocatedCount,
+      criticalCases: criticalPatients.length,
+      remainingUnassigned: unassignedPatients.length,
+      availableResources: availableResources.length
+    };
+    
+    console.log('Allocation Summary:', summary);
+  }, [displayResources, mockPatients, calculatePatientPriority, updateResourceStatus]);
 
   // Auto-allocation effect with intelligent timing
   useEffect(() => {
@@ -569,50 +656,158 @@ const ResourcesList: React.FC<ResourcesListProps> = ({ resources }) => {
     </div>
   );
 
+  // AI Allocation Simulation
+  useEffect(() => {
+    let simulationInterval: NodeJS.Timeout;
+
+    if (aiAllocationActive) {
+      // Initial allocation
+      allocateResourcesAutomatically();
+      
+      // Continuous reallocation simulation
+      simulationInterval = setInterval(() => {
+        // Randomly select resources to change
+        const resourcesCount = displayResources.length;
+        const changesToMake = Math.max(1, Math.floor(resourcesCount * 0.3)); // Change about 30% of resources
+        
+        for (let i = 0; i < changesToMake; i++) {
+          const randomIndex = Math.floor(Math.random() * resourcesCount);
+          const resource = displayResources[randomIndex];
+          
+          // Randomly decide what to do with this resource
+          const action = Math.random();
+          
+          if (action < 0.4 && resource.status !== 'in-use') {
+            // Assign to a patient
+            const availablePatients = mockPatients.filter(p => 
+              !displayResources.some(r => r.assignedTo === p.id)
+            );
+            
+            if (availablePatients.length > 0) {
+              const randomPatient = availablePatients[Math.floor(Math.random() * availablePatients.length)];
+              updateResourceStatus(resource.id, 'in-use', randomPatient.id);
+            }
+          } else if (action < 0.7 && resource.status === 'in-use') {
+            // Free up resource
+            updateResourceStatus(resource.id, 'available');
+          } else if (action < 0.8) {
+            // Put in maintenance
+            updateResourceStatus(resource.id, 'maintenance');
+          } else if (resource.status === 'maintenance') {
+            // Return from maintenance
+            updateResourceStatus(resource.id, 'available');
+          }
+        }
+      }, simulationSpeed);
+    }
+
+    return () => {
+      if (simulationInterval) {
+        clearInterval(simulationInterval);
+      }
+    };
+  }, [aiAllocationActive, displayResources, updateResourceStatus, allocateResourcesAutomatically, simulationSpeed]);
+
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
       <div className="p-5 border-b border-gray-200">
         <div className="flex justify-between items-center">
           <h2 className="font-semibold text-xl text-gray-800">Resources</h2>
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={() => setShowAllocationMenu(!showAllocationMenu)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              Resource Allocation
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">AI Allocation:</span>
+              <button
+                onClick={() => setAiAllocationActive(!aiAllocationActive)}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  aiAllocationActive ? 'bg-blue-600' : 'bg-gray-200'
+                }`}
+                aria-pressed={aiAllocationActive}
+                aria-labelledby="ai-allocation-toggle"
+              >
+                <span className="sr-only" id="ai-allocation-toggle">AI Allocation</span>
+                <span
+                  aria-hidden="true"
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    aiAllocationActive ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
             
-            {showAllocationMenu && (
-              <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
-                <div className="py-1" role="menu">
-                  <button
-                    onClick={() => {
-                      allocateResourcesAutomatically();
-                      setShowAllocationMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                    role="menuitem"
-                  >
-                    AI Optimized Allocation
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowManualDialog(true);
-                      setShowAllocationMenu(false);
-                    }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                    role="menuitem"
-                  >
-                    Manual Allocation
-                  </button>
-                </div>
+            {aiAllocationActive && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Speed:</span>
+                <select
+                  value={simulationSpeed}
+                  onChange={(e) => setSimulationSpeed(Number(e.target.value))}
+                  className="text-sm border border-gray-300 rounded-md p-1"
+                >
+                  <option value="5000">Slow</option>
+                  <option value="2000">Medium</option>
+                  <option value="1000">Fast</option>
+                  <option value="500">Very Fast</option>
+                </select>
               </div>
             )}
+            
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={() => setShowAllocationMenu(!showAllocationMenu)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                Resource Allocation
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showAllocationMenu && (
+                <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                  <div className="py-1" role="menu">
+                    {/* <button
+                      onClick={() => {
+                        allocateResourcesAutomatically();
+                        setShowAllocationMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      role="menuitem"
+                    >
+                      AI Optimized Allocation
+                    </button> */}
+                    <button
+                      onClick={() => {
+                        setShowManualDialog(true);
+                        setShowAllocationMenu(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      role="menuitem"
+                    >
+                      Manual Allocation
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
+        {aiAllocationActive && (
+          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-md p-3">
+            <div className="flex items-center">
+              <div className="mr-3 flex-shrink-0">
+                <div className="h-4 w-4 rounded-full bg-blue-600 animate-pulse"></div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-blue-800">
+                  AI Allocation Active
+                </p>
+                <p className="text-xs text-blue-600">
+                  Resources are being automatically allocated based on patient needs and priorities
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showManualDialog && renderManualAllocationDialog()}
         
