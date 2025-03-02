@@ -11,6 +11,7 @@ import Settings from './pages/Settings';
 import Login from './pages/Login';
 import PatientDetails from './pages/PatientDetails';
 import { UserProvider } from './context/UserContext';
+import MedicalAIConsultation from './pages/MedicalAIConsultation';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -38,6 +39,7 @@ function App() {
                     <Route path="/resources" element={<Resources />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/patient/:id" element={<PatientDetails />} />
+                    <Route path="/chatbot" element={<MedicalAIConsultation />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </main>

@@ -7,7 +7,8 @@ import {
   Stethoscope, 
   Boxes, 
   Settings,
-  LogOut
+  LogOut,
+  MessageSquare
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 
@@ -25,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open }) => {
     { path: '/triage', icon: <Activity size={20} />, label: 'AI Triage' },
     { path: '/treatment', icon: <Stethoscope size={20} />, label: 'Treatment' },
     { path: '/resources', icon: <Boxes size={20} />, label: 'Resources' },
+    { path: '/chatbot', icon: <MessageSquare size={20} />, label: 'AI Chatbot' },
     // { path: '/settings', icon: <Settings size={20} />, label: 'Settings' },
   ];
 
