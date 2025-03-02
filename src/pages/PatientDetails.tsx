@@ -35,6 +35,7 @@ const PatientDetails: React.FC = () => {
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [predictionResult, setPredictionResult] = useState<PredictionResult | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(true);
 
   useEffect(() => {
     // Hardcoded patient data
@@ -304,6 +305,21 @@ const PatientDetails: React.FC = () => {
         <ArrowLeft size={20} className="mr-2" />
         <span className="font-medium">Back to Patients</span>
       </button>
+
+      {isDemoMode && (
+        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start">
+            <AlertCircle size={20} className="text-amber-500 mr-2 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-amber-800">Demo Mode Active</h3>
+              <p className="text-amber-700 text-sm mt-1">
+                The AI medical image analysis is running in demo mode with simulated results. 
+                In a production environment, this would connect to a real AI analysis backend.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white shadow-xl rounded-xl overflow-hidden border border-gray-100">
         {/* Main Content */}
