@@ -19,7 +19,7 @@ interface ConsultationReport {
   followUp: string;
 }
 
-const GROQ_API_KEY = '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';
+const GROQ_API_KEY = '';
 
 const MedicalAIConsultation: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
